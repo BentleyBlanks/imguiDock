@@ -21,27 +21,24 @@ void update(){
 		// dock layout by hard-coded or .ini file
 		ImGui::BeginDockspace();
 
-    	if(ImGui::BeginDock("Dock 1"))
-	    {
-	    	ImGui::Text("Hi");
-	    }
-	    ImGui::EndDock();
+		if(ImGui::BeginDock("Dock 1")){
+			ImGui::Text("Hi");
+		}
+		ImGui::EndDock();
 
-	    if(ImGui::BeginDock("Dock 2"))
-	    {
-	        ImGui::Text("I'm BentleyBlanks!");
-	    }
-	    ImGui::EndDock();
+		if(ImGui::BeginDock("Dock 2")）{
+			ImGui::Text("I'm BentleyBlanks!");
+		}
+		ImGui::EndDock();
 
-	    if(ImGui::BeginDock("Dock 3"))
-	    {
-	        ImGui::Text("Hello World");
-	    }
-	    ImGui::EndDock();
+		if(ImGui::BeginDock("Dock 3")){
+			ImGui::Text("Hello World");
+		}
+		ImGui::EndDock();
 
-	    ImGui::EndDockspace();
+		ImGui::EndDockspace();
 	}
-    ImGui::End();
+	ImGui::End();
 }
 
 ...
