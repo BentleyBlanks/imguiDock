@@ -7,6 +7,9 @@
 #include "imgui_internal.h"
 #include "imgui_dock.h"
 
+// for string comparasion(could be replaced)
+#include <string>
+
 using namespace ImGui;
 
 #define nullptr NULL
@@ -725,7 +728,7 @@ struct DockContext
 					pos + ImVec2(size.x + 10, size.y),
 					pos + ImVec2(size.x + 15, size.y),
 					10);
-				draw_list->PathFill(
+				draw_list->PathFillConvex(
 					hovered ? color_hovered : (dock_tab->active ? color_active : color));
 				draw_list->AddText(pos + ImVec2(0, 1), text_color, dock_tab->label, text_end);
 
@@ -972,14 +975,14 @@ struct DockContext
 				opened,
 				dock.size,
 				-1.0f,
-				ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_ShowBorders | extra_flags);
+				ImGuiWindowFlags_NoCollapse /*| ImGuiWindowFlags_ShowBorders*/ | extra_flags); // ImGuiWindowFlags_ShowBorders not used in new version of ImGui
 			m_end_action = EndAction_End;
 			dock.pos = GetWindowPos();
 			dock.size = GetWindowSize();
 
 			ImGuiContext& g = *GImGui;
 
-			if (g.ActiveId == GetCurrentWindow()->MoveID && g.IO.MouseDown[0])
+			if (g.ActiveId == GetCurrentWindow()->GetID("#MOVE") && g.IO.MouseDown[0])
 			{
 				m_drag_offset = GetMousePos() - dock.pos;
 				doUndock(dock);
@@ -1081,7 +1084,7 @@ struct DockContext
     
     void saveDock()
     {
-        string fileName = "imgui_dock.ini";
+        std::string fileName = "imgui_dock.ini";
 
         // Write .ini file
         // If a window wasn't opened in this session we preserve its settings
@@ -1119,10 +1122,10 @@ struct DockContext
     void loadDock()
     {
         // parse ini file
-        string fileName = "imgui_dock.ini";
+        std::string fileName = "imgui_dock.ini";
 
         int file_size;
-        char* file_data = (char*) ImLoadFileToMemory(fileName.c_str(), "rb", &file_size, 1);
+        char* file_data = (char*) ImFileLoadToMemory(fileName.c_str(), "rb", &file_size, 1);
         if(!file_data)
             return;
 
@@ -1148,11 +1151,11 @@ struct DockContext
                 char name[64];
                 ImFormatString(name, IM_ARRAYSIZE(name), "%.*s", (int) (line_end - line_start - 2), line_start + 1);
                 // Test the special dock setting name/dock name
-                string iniName(name), dockSettings("Size:"), dockName("Dock:");
+                std::string iniName(name), dockSettings("Size:"), dockName("Dock:");
                 if(iniName.substr(0, 5) == dockSettings)
                 {
                     // docks alloc
-                    string dockNumStr = iniName.substr(5);
+                    std::string dockNumStr = iniName.substr(5);
                     int dockNum = atoi(dockNumStr.c_str());
                     for(int i = 0; i < dockNum; i++)
                     {
@@ -1163,7 +1166,7 @@ struct DockContext
                 else if(iniName.substr(0, 5) == dockName)
                 {
                     // find dock
-                    string indexStr = iniName.substr(5);
+                    std::string indexStr = iniName.substr(5);
                     int index = atoi(indexStr.c_str());
                     dock = m_docks[index];
                 }
