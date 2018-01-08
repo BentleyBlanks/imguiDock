@@ -26,7 +26,7 @@ void update(){
 		}
 		ImGui::EndDock();
 
-		if(ImGui::BeginDock("Dock 2")）{
+		if(ImGui::BeginDock("Dock 2")){
 			ImGui::Text("I'm BentleyBlanks!");
 		}
 		ImGui::EndDock();
@@ -43,7 +43,9 @@ void update(){
 
 ...
 // In some cases save the layout of dock to imgui_dock.ini
-ImGui::LoadDock();
+ImGui::SaveDock();
 ...
 
 ```
+
+> Some complie errors may occured because of the API change of ImGui, pls let me know
