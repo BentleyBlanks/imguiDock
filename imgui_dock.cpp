@@ -1066,188 +1066,162 @@ struct DockContext
         }
         End();
     }
-    
-	int getDockIndex(Dock* dock)
-	{
-		if (!dock) return -1;
-
-		for (int i = 0; i < m_docks.size(); ++i)
-		{
-			if (dock == m_docks[i]) return i;
-		}
-
-		IM_ASSERT(false);
-		return -1;
-	}
-
-    Dock* getDockByIndex(int idx) { return idx < 0 ? nullptr : m_docks[idx]; }
-    
-    void saveDock()
-    {
-        std::string fileName = "imgui_dock.ini";
-
-        // Write .ini file
-        // If a window wasn't opened in this session we preserve its settings
-        FILE* f = fopen(fileName.c_str(), "wt");
-        if(!f)
-            return;
-
-        fprintf(f, "[Size:%d]\n", m_docks.size());
-
-        for(int i = 0; i < m_docks.size(); i++)
-        {
-            Dock* dock = m_docks[i];
-
-            // special name
-            fprintf(f, "[Dock:%d]\n", i);
-            fprintf(f, "label=%s\n", dock->label);
-            fprintf(f, "x=%d\n", (int) dock->pos.x);
-            fprintf(f, "y=%d\n", (int) dock->pos.y);
-            fprintf(f, "size_x=%d\n", (int) dock->size.x);
-            fprintf(f, "size_y=%d\n", (int) dock->size.y);
-            fprintf(f, "active=%d\n", (int) dock->active);
-            fprintf(f, "opened=%d\n", (int) dock->opened);
-            fprintf(f, "location=%s\n", dock->location);
-            fprintf(f, "status=%d\n", (int) dock->status);
-            fprintf(f, "prev=%d\n", (int) getDockIndex(dock->prev_tab));
-            fprintf(f, "next=%d\n", (int) getDockIndex(dock->next_tab));
-            fprintf(f, "child0=%d\n", (int) getDockIndex(dock->children[0]));
-            fprintf(f, "child1=%d\n", (int) getDockIndex(dock->children[1]));
-            fprintf(f, "parent=%d\n", (int) getDockIndex(dock->parent));
-        }
-
-        fclose(f);
-    }
-
-    void loadDock()
-    {
-        // parse ini file
-        std::string fileName = "imgui_dock.ini";
-
-        int file_size;
-        char* file_data = (char*) ImFileLoadToMemory(fileName.c_str(), "rb", &file_size, 1);
-        if(!file_data)
-            return;
-
-        // clear all the dock
-        for(int i = 0; i < m_docks.size(); ++i)
-        {
-            m_docks[i]->~Dock();
-            MemFree(m_docks[i]);
-        }
-        m_docks.clear();
-
-        // the saved dock
-        Dock* dock = NULL;
-        const char* buf_end = file_data + file_size;
-        for(const char* line_start = file_data; line_start < buf_end; )
-        {
-            const char* line_end = line_start;
-            while(line_end < buf_end && *line_end != '\n' && *line_end != '\r')
-                line_end++;
-
-            if(line_start[0] == '[' && line_end > line_start && line_end[-1] == ']')
-            {
-                char name[64];
-                ImFormatString(name, IM_ARRAYSIZE(name), "%.*s", (int) (line_end - line_start - 2), line_start + 1);
-                // Test the special dock setting name/dock name
-                std::string iniName(name), dockSettings("Size:"), dockName("Dock:");
-                if(iniName.substr(0, 5) == dockSettings)
-                {
-                    // docks alloc
-                    std::string dockNumStr = iniName.substr(5);
-                    int dockNum = atoi(dockNumStr.c_str());
-                    for(int i = 0; i < dockNum; i++)
-                    {
-                        Dock* new_dock = (Dock*) MemAlloc(sizeof(Dock));
-                        m_docks.push_back(IM_PLACEMENT_NEW(new_dock) Dock());
-                    }
-                }
-                else if(iniName.substr(0, 5) == dockName)
-                {
-                    // find dock
-                    std::string indexStr = iniName.substr(5);
-                    int index = atoi(indexStr.c_str());
-                    dock = m_docks[index];
-                }
-            }
-            else
-            {
-                int active, opened, status;
-                int x, y, size_x, size_y;
-                int prev, next, child0, child1, parent;
-                char label[64], location[64];
-
-                if(sscanf(line_start, "label=%[^\n^\r]", label) == 1)
-                {
-                    dock->label = ImStrdup(label);
-                    dock->id = ImHash(dock->label, 0);
-                }
-                else if(sscanf(line_start, "x=%d", &x) == 1)
-                {
-                    dock->pos.x = x;
-                }
-                else if(sscanf(line_start, "y=%d", &y) == 1)
-                {
-                    dock->pos.y = y;
-                }
-                else if(sscanf(line_start, "size_x=%d", &size_x) == 1)
-                {
-                    dock->size.x = size_x;
-                }
-                else if(sscanf(line_start, "size_y=%d", &size_y) == 1)
-                {
-                    dock->size.y = size_y;
-                }
-                else if(sscanf(line_start, "active=%d", &active) == 1)
-                {
-                    dock->active = (bool) active;
-                }
-                else if(sscanf(line_start, "opened=%d", &opened) == 1)
-                {
-                    dock->opened = (bool) opened;
-                }
-                else if(sscanf(line_start, "location=%[^\n^\r]", location) == 1)
-                {
-                    strcpy(dock->location, location);
-                }
-                else if(sscanf(line_start, "status=%d", &status) == 1)
-                {
-                    dock->status = (Status_) status;
-                }
-                else if(sscanf(line_start, "prev=%d", &prev) == 1)
-                {
-                    dock->prev_tab = getDockByIndex(prev);
-                }
-                else if(sscanf(line_start, "next=%d", &next) == 1)
-                {
-                    dock->next_tab = getDockByIndex(next);
-                }
-                else if(sscanf(line_start, "child0=%d", &child0) == 1)
-                {
-                    dock->children[0] = getDockByIndex(child0);
-                }
-                else if(sscanf(line_start, "child1=%d", &child1) == 1)
-                {
-                    dock->children[1] = getDockByIndex(child1);
-                }
-                else if(sscanf(line_start, "parent=%d", &parent) == 1)
-                {
-                    dock->parent = getDockByIndex(parent);
-                }
-            }
-
-            line_start = line_end + 1;
-        }
-
-        ImGui::MemFree(file_data);
-    }
 };
 
-
+// --------------------------------------Wrap Function------------------------------------------
 static DockContext g_dock;
 
+int getDockIndex(DockContext::Dock* dock)
+{
+    if(!dock) return -1;
 
+    for(int i = 0; i < g_dock.m_docks.size(); ++i)
+    {
+        if(dock == g_dock.m_docks[i]) 
+            return i;
+    }
+
+    IM_ASSERT(false);
+    return -1;
+}
+
+DockContext::Dock* getDockByIndex(int idx)
+{ 
+    return idx < 0 ? nullptr : g_dock.m_docks[idx];
+}
+
+static void* readOpen(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name)
+{
+    DockContext::Dock* dock = NULL;
+
+    std::string tag(name);
+
+    // specific size of docks
+    if(tag.substr(0, 5) == "Size:")
+    {
+        std::string size = tag.substr(5);
+        int dockSize = atoi(size.c_str());
+        for(int i = 0; i < dockSize; i++)
+        {
+            DockContext::Dock* new_dock = (DockContext::Dock*) MemAlloc(sizeof(DockContext::Dock));
+            g_dock.m_docks.push_back(IM_PLACEMENT_NEW(new_dock) DockContext::Dock());
+        }
+        return (void*)NULL;
+    }
+    // specific index of dock
+    else if(tag.substr(0, 5) == "Dock:")
+    {
+        std::string indexStr = tag.substr(5);
+        int index = atoi(indexStr.c_str());
+        dock = g_dock.m_docks[index];
+    }
+
+    return (void*) dock;
+}
+
+static void readLine(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line_start)
+{
+    DockContext::Dock* dock = (DockContext::Dock*) entry;
+
+    if(dock)
+    {
+        int active, opened, status;
+        int x, y, size_x, size_y;
+        int prev, next, child0, child1, parent;
+        char label[64], location[64];
+
+        if(sscanf(line_start, "label=%[^\n^\r]", label) == 1)
+        {
+            dock->label = ImStrdup(label);
+            dock->id = ImHash(dock->label, 0);
+        }
+        else if(sscanf(line_start, "x=%d", &x) == 1)
+        {
+            dock->pos.x = x;
+        }
+        else if(sscanf(line_start, "y=%d", &y) == 1)
+        {
+            dock->pos.y = y;
+        }
+        else if(sscanf(line_start, "size_x=%d", &size_x) == 1)
+        {
+            dock->size.x = size_x;
+        }
+        else if(sscanf(line_start, "size_y=%d", &size_y) == 1)
+        {
+            dock->size.y = size_y;
+        }
+        else if(sscanf(line_start, "active=%d", &active) == 1)
+        {
+            dock->active = (bool) active;
+        }
+        else if(sscanf(line_start, "opened=%d", &opened) == 1)
+        {
+            dock->opened = (bool) opened;
+        }
+        else if(sscanf(line_start, "location=%[^\n^\r]", location) == 1)
+        {
+            strcpy(dock->location, location);
+        }
+        else if(sscanf(line_start, "status=%d", &status) == 1)
+        {
+            dock->status = (DockContext::Status_) status;
+        }
+        else if(sscanf(line_start, "prev=%d", &prev) == 1)
+        {
+            dock->prev_tab = getDockByIndex(prev);
+        }
+        else if(sscanf(line_start, "next=%d", &next) == 1)
+        {
+            dock->next_tab = getDockByIndex(next);
+        }
+        else if(sscanf(line_start, "child0=%d", &child0) == 1)
+        {
+            dock->children[0] = getDockByIndex(child0);
+        }
+        else if(sscanf(line_start, "child1=%d", &child1) == 1)
+        {
+            dock->children[1] = getDockByIndex(child1);
+        }
+        else if(sscanf(line_start, "parent=%d", &parent) == 1)
+        {
+            dock->parent = getDockByIndex(parent);
+        }
+    }
+}
+
+static void writeAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
+{
+    // Write a buffer
+    buf->reserve(buf->size() + g_dock.m_docks.size() * sizeof(DockContext::Dock) + 32);
+
+    // output size
+    buf->appendf("[%s][Size:%d]\n", handler->TypeName, g_dock.m_docks.size());
+    for(int i = 0; i < g_dock.m_docks.size(); i++)
+    {
+        DockContext::Dock* d = g_dock.m_docks[i];
+
+        // some docks invisible but do exist
+        buf->appendf("[%s][Dock:%d]\n", handler->TypeName, i);
+        buf->appendf("label=%s\n", d->label);
+        buf->appendf("x=%d\n", (int) d->pos.x);
+        buf->appendf("y=%d\n", (int) d->pos.y);
+        buf->appendf("size_x=%d\n", (int) d->size.x);
+        buf->appendf("size_y=%d\n", (int) d->size.y);
+        buf->appendf("active=%d\n", (int) d->active);
+        buf->appendf("opened=%d\n", (int) d->opened);
+        buf->appendf("location=%s\n", d->location);
+        buf->appendf("status=%d\n", (int) d->status);
+        buf->appendf("prev=%d\n", (int) getDockIndex(d->prev_tab));
+        buf->appendf("next=%d\n", (int) getDockIndex(d->next_tab));
+        buf->appendf("child0=%d\n", (int) getDockIndex(d->children[0]));
+        buf->appendf("child1=%d\n", (int) getDockIndex(d->children[1]));
+        buf->appendf("parent=%d\n", (int) getDockIndex(d->parent));
+    }
+}
+
+
+// ----------------------------------------------API-------------------------------------------------
 void ImGui::ShutdownDock()
 {
 	for (int i = 0; i < g_dock.m_docks.size(); ++i)
@@ -1295,12 +1269,24 @@ void ImGui::DockDebugWindow()
     g_dock.debugWindow();
 }
 
-void ImGui::SaveDock()
+void ImGui::InitDock()
 {
-    g_dock.saveDock();
+    ImGuiContext& g = *GImGui;
+    ImGuiSettingsHandler ini_handler;
+    ini_handler.TypeName = "Dock";
+    ini_handler.TypeHash = ImHash("Dock", 0, 0);
+    ini_handler.ReadOpenFn = readOpen;
+    ini_handler.ReadLineFn = readLine;
+    ini_handler.WriteAllFn = writeAll;
+    g.SettingsHandlers.push_front(ini_handler);
 }
 
-void ImGui::LoadDock()
-{
-    g_dock.loadDock();
-}
+//void ImGui::SaveDock()
+//{
+//    g_dock.saveDock();
+//}
+//
+//void ImGui::LoadDock()
+//{
+//    g_dock.loadDock();
+//}

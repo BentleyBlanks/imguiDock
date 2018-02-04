@@ -27,7 +27,8 @@ IMGUI_API bool BeginDock(const char* label, bool* opened = NULL, ImGuiWindowFlag
 IMGUI_API void EndDock();
 IMGUI_API void SetDockActive();
 IMGUI_API void DockDebugWindow();
-IMGUI_API void SaveDock();
-IMGUI_API void LoadDock();
+//IMGUI_API void SaveDock();
+//IMGUI_API void LoadDock();
+IMGUI_API void InitDock();
 
 };
