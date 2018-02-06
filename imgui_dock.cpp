@@ -1319,7 +1319,11 @@ bool ImGui::BeginDock(const char* label, bool* opened, ImGuiWindowFlags extra_fl
 	if( g_docklist.find( cur_dock_panel ) != g_docklist.end() )
 	{
 		DockContext& context = g_docklist[cur_dock_panel];
-		return context.begin( label , opened , extra_flags );
+
+		char new_label[128];
+		sprintf_s( new_label , "%s##%s" , label , cur_dock_panel );
+
+		return context.begin( new_label , opened , extra_flags );
 	}
 	
 	return false;
