@@ -1291,14 +1291,16 @@ bool ImGui::BeginDockspace(const char* dock_panel)
 {
 	cur_dock_panel = dock_panel;
 
-	if( !dock_panel )	return false;
+	IM_ASSERT( cur_dock_panel );
+
+	if( !cur_dock_panel )	return false;
 	
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
 	char child_name[1024];
-	sprintf( child_name , "##%s" , dock_panel );
+	sprintf( child_name , "##%s" , cur_dock_panel );
 	bool result = BeginChild( child_name , ImVec2( 0 , 0 ) , false , flags );
 
-	DockContext& dock = g_docklist[dock_panel];
+	DockContext& dock = g_docklist[cur_dock_panel];
 	dock.m_workspace_pos = GetWindowPos();
 	dock.m_workspace_size = GetWindowSize();
 
@@ -1314,6 +1316,8 @@ IMGUI_API void ImGui::EndDockspace()
 
 bool ImGui::BeginDock(const char* label, bool* opened, ImGuiWindowFlags extra_flags)
 {
+	IM_ASSERT( cur_dock_panel );
+
 	if( !cur_dock_panel )	return false;
 
 	if( g_docklist.find( cur_dock_panel ) != g_docklist.end() )
@@ -1332,6 +1336,8 @@ bool ImGui::BeginDock(const char* label, bool* opened, ImGuiWindowFlags extra_fl
 
 void ImGui::EndDock()
 {
+	IM_ASSERT( cur_dock_panel );
+
 	if( !cur_dock_panel )	return;
 
 	if( g_docklist.find( cur_dock_panel ) != g_docklist.end() )
