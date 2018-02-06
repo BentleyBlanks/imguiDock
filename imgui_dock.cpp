@@ -322,7 +322,7 @@ struct DockContext
 			else
 			{
                 cursor = ImGuiMouseCursor_ResizeNS;
-                SetCursorScreenPos(ImVec2(dock.pos.x, dock.pos.y + size0.y));
+                SetCursorScreenPos(ImVec2(dock.pos.x, dock.pos.y + size0.y - 3));
 				InvisibleButton("split", ImVec2(dock.size.x, 3));
 				if (dock.status == Status_Dragged) dsize.y = io.MouseDelta.y;
 				dsize.y = -ImMin(-dsize.y, dock.children[0]->size.y - min_size0.y);
@@ -378,7 +378,7 @@ struct DockContext
 	}
 
 
-	Dock* getDockAt(const ImVec2& pos) const
+	Dock* getDockAt() const
 	{
 		for (int i = 0; i < m_docks.size(); ++i)
 		{
@@ -491,7 +491,7 @@ struct DockContext
 
 	void handleDrag(Dock& dock)
 	{
-		Dock* dest_dock = getDockAt(GetIO().MousePos);
+		Dock* dest_dock = getDockAt();
 
 		Begin("##Overlay",
 			NULL,
@@ -861,14 +861,6 @@ struct DockContext
 		root->setPosSize(pos, ImMax(min_size, requested_size));
 	}
 
-
-	void setDockActive()
-	{
-		IM_ASSERT(m_current);
-		if (m_current) m_current->setActive();
-	}
-
-
 	static ImGuiDockSlot getSlotFromLocationCode(char code)
 	{
 		switch (code)
@@ -1069,15 +1061,19 @@ struct DockContext
 };
 
 // --------------------------------------Wrap Function------------------------------------------
-static DockContext g_dock;
+#include <map>
+#include <string>
 
-int getDockIndex(DockContext::Dock* dock)
+static std::map<std::string , DockContext> g_docklist;
+static const char* cur_dock_panel = nullptr;
+
+int getDockIndex( const DockContext& context , DockContext::Dock* dock )
 {
     if(!dock) return -1;
 
-    for(int i = 0; i < g_dock.m_docks.size(); ++i)
+    for(int i = 0; i < context.m_docks.size(); ++i)
     {
-        if(dock == g_dock.m_docks[i]) 
+        if(dock == context.m_docks[i]) 
             return i;
     }
 
@@ -1085,45 +1081,77 @@ int getDockIndex(DockContext::Dock* dock)
     return -1;
 }
 
-DockContext::Dock* getDockByIndex(int idx)
+DockContext::Dock* getDockByIndex( const DockContext& context , int idx )
 { 
-    return idx < 0 ? nullptr : g_dock.m_docks[idx];
+	if( idx >= 0 && idx < context.m_docks.size() )
+	{
+		return context.m_docks[idx];
+	}
+
+	return nullptr;
 }
+
+struct readHelper
+{
+	DockContext* context = nullptr;
+	DockContext::Dock* dock = nullptr;
+};
+static readHelper rhelper;
 
 static void* readOpen(ImGuiContext* ctx, ImGuiSettingsHandler* handler, const char* name)
 {
-    DockContext::Dock* dock = NULL;
+	static std::string context_panel = "";
+
+	rhelper.context = nullptr;
+	rhelper.dock	= nullptr;
 
     std::string tag(name);
 
+	if( tag.substr( 0 , 6 ) == "panel:" )
+	{
+		context_panel = tag.substr( 6 );
+	}
     // specific size of docks
-    if(tag.substr(0, 5) == "Size:")
+    else if(tag.substr(0, 5) == "Size:")
     {
-        std::string size = tag.substr(5);
-        int dockSize = atoi(size.c_str());
-        for(int i = 0; i < dockSize; i++)
-        {
-            DockContext::Dock* new_dock = (DockContext::Dock*) MemAlloc(sizeof(DockContext::Dock));
-            g_dock.m_docks.push_back(IM_PLACEMENT_NEW(new_dock) DockContext::Dock());
-        }
+		DockContext& context = g_docklist[context_panel.c_str()];
+
+		std::string size = tag.substr( 5 );
+		int dockSize = atoi( size.c_str() );
+
+		for( int i = 0; i < dockSize; i++ )
+		{
+			DockContext::Dock* new_dock = ( DockContext::Dock* ) MemAlloc( sizeof( DockContext::Dock ) );
+			context.m_docks.push_back( IM_PLACEMENT_NEW( new_dock ) DockContext::Dock() );
+		}
+
         return (void*)NULL;
     }
     // specific index of dock
     else if(tag.substr(0, 5) == "Dock:")
     {
-        std::string indexStr = tag.substr(5);
-        int index = atoi(indexStr.c_str());
-        dock = g_dock.m_docks[index];
+		if( g_docklist.find( context_panel.c_str() ) != g_docklist.end() )
+		{
+			DockContext& context = g_docklist[context_panel.c_str()];
+
+			std::string indexStr = tag.substr( 5 );
+			int index = atoi( indexStr.c_str() );
+			if( index >= 0 && index < ( int )context.m_docks.size() )
+			{
+				rhelper.dock = context.m_docks[index];
+				rhelper.context = &context;
+			}
+		}
     }
 
-    return (void*) dock;
+    return (void*) &rhelper;
 }
 
 static void readLine(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* entry, const char* line_start)
 {
-    DockContext::Dock* dock = (DockContext::Dock*) entry;
+	readHelper* userdata = ( readHelper* )entry;
 
-    if(dock)
+    if( userdata )
     {
         int active, opened, status;
         int x, y, size_x, size_y;
@@ -1132,141 +1160,190 @@ static void readLine(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* ent
 
         if(sscanf(line_start, "label=%[^\n^\r]", label) == 1)
         {
-            dock->label = ImStrdup(label);
-            dock->id = ImHash(dock->label, 0);
+            userdata->dock->label = ImStrdup(label);
+			userdata->dock->id = ImHash( userdata->dock->label, 0);
         }
         else if(sscanf(line_start, "x=%d", &x) == 1)
         {
-            dock->pos.x = x;
+			userdata->dock->pos.x = ( float )x;
         }
         else if(sscanf(line_start, "y=%d", &y) == 1)
         {
-            dock->pos.y = y;
+			userdata->dock->pos.y = ( float )y;
         }
         else if(sscanf(line_start, "size_x=%d", &size_x) == 1)
         {
-            dock->size.x = size_x;
+			userdata->dock->size.x = ( float )size_x;
         }
         else if(sscanf(line_start, "size_y=%d", &size_y) == 1)
         {
-            dock->size.y = size_y;
+			userdata->dock->size.y = ( float )size_y;
         }
         else if(sscanf(line_start, "active=%d", &active) == 1)
         {
-            dock->active = (bool) active;
+			userdata->dock->active = (bool) active;
         }
         else if(sscanf(line_start, "opened=%d", &opened) == 1)
         {
-            dock->opened = (bool) opened;
+			userdata->dock->opened = (bool) opened;
         }
         else if(sscanf(line_start, "location=%[^\n^\r]", location) == 1)
         {
-            strcpy(dock->location, location);
+            strcpy( userdata->dock->location, location);
         }
         else if(sscanf(line_start, "status=%d", &status) == 1)
         {
-            dock->status = (DockContext::Status_) status;
+			userdata->dock->status = (DockContext::Status_) status;
         }
         else if(sscanf(line_start, "prev=%d", &prev) == 1)
         {
-            dock->prev_tab = getDockByIndex(prev);
+			userdata->dock->prev_tab = getDockByIndex( *( userdata->context ) , prev );
         }
         else if(sscanf(line_start, "next=%d", &next) == 1)
         {
-            dock->next_tab = getDockByIndex(next);
+			userdata->dock->next_tab = getDockByIndex( *( userdata->context ) , next );
         }
         else if(sscanf(line_start, "child0=%d", &child0) == 1)
         {
-            dock->children[0] = getDockByIndex(child0);
+			userdata->dock->children[0] = getDockByIndex( *( userdata->context ) , child0 );
         }
         else if(sscanf(line_start, "child1=%d", &child1) == 1)
         {
-            dock->children[1] = getDockByIndex(child1);
+			userdata->dock->children[1] = getDockByIndex( *( userdata->context ) , child1 );
         }
         else if(sscanf(line_start, "parent=%d", &parent) == 1)
         {
-            dock->parent = getDockByIndex(parent);
+			userdata->dock->parent = getDockByIndex( *( userdata->context ) , parent );
         }
     }
 }
 
 static void writeAll(ImGuiContext* ctx, ImGuiSettingsHandler* handler, ImGuiTextBuffer* buf)
 {
+	int totalDockNum = 0;
+	for( const auto& iter : g_docklist )
+	{
+		const DockContext& context = iter.second;
+		totalDockNum += context.m_docks.size();
+	}
+
     // Write a buffer
-    buf->reserve(buf->size() + g_dock.m_docks.size() * sizeof(DockContext::Dock) + 32);
+	buf->reserve( buf->size() + totalDockNum * sizeof( DockContext::Dock ) + 32 * ( totalDockNum + ( int )g_docklist.size() * 2 ) );
 
     // output size
-    buf->appendf("[%s][Size:%d]\n", handler->TypeName, g_dock.m_docks.size());
-    for(int i = 0; i < g_dock.m_docks.size(); i++)
-    {
-        DockContext::Dock* d = g_dock.m_docks[i];
+	for( const auto& iter : g_docklist )
+	{
+		const DockContext& context = iter.second;
 
-        // some docks invisible but do exist
-        buf->appendf("[%s][Dock:%d]\n", handler->TypeName, i);
-        buf->appendf("label=%s\n", d->label);
-        buf->appendf("x=%d\n", (int) d->pos.x);
-        buf->appendf("y=%d\n", (int) d->pos.y);
-        buf->appendf("size_x=%d\n", (int) d->size.x);
-        buf->appendf("size_y=%d\n", (int) d->size.y);
-        buf->appendf("active=%d\n", (int) d->active);
-        buf->appendf("opened=%d\n", (int) d->opened);
-        buf->appendf("location=%s\n", d->location);
-        buf->appendf("status=%d\n", (int) d->status);
-        buf->appendf("prev=%d\n", (int) getDockIndex(d->prev_tab));
-        buf->appendf("next=%d\n", (int) getDockIndex(d->next_tab));
-        buf->appendf("child0=%d\n", (int) getDockIndex(d->children[0]));
-        buf->appendf("child1=%d\n", (int) getDockIndex(d->children[1]));
-        buf->appendf("parent=%d\n", (int) getDockIndex(d->parent));
-    }
+		buf->appendf( "[%s][panel:%s]\n" , handler->TypeName , iter.first.c_str() );
+		buf->appendf( "[%s][Size:%d]\n" , handler->TypeName , ( int )context.m_docks.size() );
+
+		for( int i = 0 , docksize = context.m_docks.size(); i < docksize; i++ )
+		{
+			const DockContext::Dock* d = context.m_docks[i];
+
+			// some docks invisible but do exist
+			buf->appendf( "[%s][Dock:%d]\n" , handler->TypeName , i );
+			buf->appendf( "label=%s\n" , d->label );
+			buf->appendf( "x=%d\n" , ( int )d->pos.x );
+			buf->appendf( "y=%d\n" , ( int )d->pos.y );
+			buf->appendf( "size_x=%d\n" , ( int )d->size.x );
+			buf->appendf( "size_y=%d\n" , ( int )d->size.y );
+			buf->appendf( "active=%d\n" , ( int )d->active );
+			buf->appendf( "opened=%d\n" , ( int )d->opened );
+			buf->appendf( "location=%s\n" , d->location );
+			buf->appendf( "status=%d\n" , ( int )d->status );
+			buf->appendf( "prev=%d\n" , ( int )getDockIndex( context , d->prev_tab ) );
+			buf->appendf( "next=%d\n" , ( int )getDockIndex( context , d->next_tab ) );
+			buf->appendf( "child0=%d\n" , ( int )getDockIndex( context , d->children[0] ) );
+			buf->appendf( "child1=%d\n" , ( int )getDockIndex( context , d->children[1] ) );
+			buf->appendf( "parent=%d\n" , ( int )getDockIndex( context , d->parent ) );
+		}
+	}
 }
 
 
 // ----------------------------------------------API-------------------------------------------------
 void ImGui::ShutdownDock()
 {
-	for (int i = 0; i < g_dock.m_docks.size(); ++i)
+	for( auto& iter : g_docklist )
 	{
-		g_dock.m_docks[i]->~Dock();
-		MemFree(g_dock.m_docks[i]);
+		DockContext& context = iter.second;
+
+		for( int k = 0 , dock_count = ( int )context.m_docks.size(); k < dock_count; k++ )
+		{
+			context.m_docks[k]->~Dock();
+			MemFree( context.m_docks[k] );
+			context.m_docks[k] = nullptr;
+		}
 	}
-	g_dock.m_docks.clear();
+	g_docklist.clear();
 }
 
-void ImGui::SetNextDock(ImGuiDockSlot slot) {
-    g_dock.m_next_dock_slot = slot;
+void ImGui::SetNextDock(const char* panel , ImGuiDockSlot slot) {
+	if( panel && g_docklist.find( panel ) != g_docklist.end() )
+	{
+		g_docklist[panel].m_next_dock_slot = slot;
+	}
 }
 
-void ImGui::BeginDockspace() {
-    ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
-    BeginChild("###workspace", ImVec2(0,0), false, flags);
-    g_dock.m_workspace_pos = GetWindowPos();
-    g_dock.m_workspace_size = GetWindowSize();
-}
-
-void ImGui::EndDockspace() {
-    EndChild();
-}
-
-void ImGui::SetDockActive()
+bool ImGui::BeginDockspace(const char* dock_panel)
 {
-	g_dock.setDockActive();
+	cur_dock_panel = dock_panel;
+
+	if( !dock_panel )	return false;
+	
+	ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
+	char child_name[1024];
+	sprintf( child_name , "##%s" , dock_panel );
+	bool result = BeginChild( child_name , ImVec2( 0 , 0 ) , false , flags );
+
+	DockContext& dock = g_docklist[dock_panel];
+	dock.m_workspace_pos = GetWindowPos();
+	dock.m_workspace_size = GetWindowSize();
+
+	return result;
 }
 
+IMGUI_API void ImGui::EndDockspace()
+{
+	EndChild();
+
+	cur_dock_panel = nullptr;
+}
 
 bool ImGui::BeginDock(const char* label, bool* opened, ImGuiWindowFlags extra_flags)
 {
-	return g_dock.begin(label, opened, extra_flags);
+	if( !cur_dock_panel )	return false;
+
+	if( g_docklist.find( cur_dock_panel ) != g_docklist.end() )
+	{
+		DockContext& context = g_docklist[cur_dock_panel];
+		return context.begin( label , opened , extra_flags );
+	}
+	
+	return false;
 }
 
 
 void ImGui::EndDock()
 {
-	g_dock.end();
+	if( !cur_dock_panel )	return;
+
+	if( g_docklist.find( cur_dock_panel ) != g_docklist.end() )
+	{
+		DockContext& context = g_docklist[cur_dock_panel];
+		context.end();
+	}
 }
 
-void ImGui::DockDebugWindow()
+void ImGui::DockDebugWindow(const char* dock_panel)
 {
-    g_dock.debugWindow();
+	if( dock_panel && g_docklist.find( dock_panel ) != g_docklist.end() )
+	{
+		DockContext& context = g_docklist[dock_panel];
+		context.debugWindow();
+	}
 }
 
 void ImGui::InitDock()
@@ -1280,13 +1357,3 @@ void ImGui::InitDock()
     ini_handler.WriteAllFn = writeAll;
     g.SettingsHandlers.push_front(ini_handler);
 }
-
-//void ImGui::SaveDock()
-//{
-//    g_dock.saveDock();
-//}
-//
-//void ImGui::LoadDock()
-//{
-//    g_dock.loadDock();
-//}
