@@ -19,7 +19,7 @@ void update(){
 	if(ImGui::Begin("Dock Demo"))
 	{
 		// dock layout by hard-coded or .ini file
-		ImGui::BeginDockspace();
+		ImGui::BeginDockspace("dockspacename");
 
 		if(ImGui::BeginDock("Dock 1")){
 			ImGui::Text("Hi");
