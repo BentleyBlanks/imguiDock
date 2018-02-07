@@ -39,6 +39,30 @@ void update(){
 		ImGui::EndDockspace();
 	}
 	ImGui::End();
+	
+	if(ImGui::Begin("Dock Demo2"))
+	{
+		// dock layout by hard-coded or .ini file
+		ImGui::BeginDockspace("dockspacename2");
+
+		if(ImGui::BeginDock("Dock 1")){
+			ImGui::Text("Hi");
+		}
+		ImGui::EndDock();
+
+		if(ImGui::BeginDock("Dock 2")){
+			ImGui::Text("I'm BentleyBlanks!");
+		}
+		ImGui::EndDock();
+
+		if(ImGui::BeginDock("Dock 3")){
+			ImGui::Text("Hello World");
+		}
+		ImGui::EndDock();
+
+		ImGui::EndDockspace();
+	}
+	ImGui::End();
 }
 
 ```
