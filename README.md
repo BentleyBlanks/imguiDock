@@ -17,7 +17,7 @@ void update(){
 		ImGui::BeginDockspace();
 
 		if(ImGui::BeginDock("Dock 1")){
-			ImGui::Text("Hi");
+			ImGui::Text("I'm Wubugui!");
 		}
 		ImGui::EndDock();
 
@@ -27,7 +27,7 @@ void update(){
 		ImGui::EndDock();
 
 		if(ImGui::BeginDock("Dock 3")){
-			ImGui::Text("Hello World");
+			ImGui::Text("I'm LonelyWaiting!");
 		}
 		ImGui::EndDock();
 
@@ -40,18 +40,8 @@ void update(){
 	{
 		ImGui::BeginDockspace();
 
-		if(ImGui::BeginDock("Dock 1")){
-			ImGui::Text("Hi");
-		}
-		ImGui::EndDock();
-
 		if(ImGui::BeginDock("Dock 2")){
-			ImGui::Text("I'm BentleyBlanks!");
-		}
-		ImGui::EndDock();
-
-		if(ImGui::BeginDock("Dock 3")){
-			ImGui::Text("Hello World");
+			ImGui::Text("Who's your daddy?");
 		}
 		ImGui::EndDock();
 
