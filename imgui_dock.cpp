@@ -1287,9 +1287,10 @@ void ImGui::SetNextDock(const char* panel , ImGuiDockSlot slot) {
 	}
 }
 
-bool ImGui::BeginDockspace(const char* dock_panel)
+bool ImGui::BeginDockspace()
 {
-	cur_dock_panel = dock_panel;
+    ImGuiContext& g = *GImGui;
+	cur_dock_panel = g.CurrentWindow->Name;
 
 	IM_ASSERT( cur_dock_panel );
 

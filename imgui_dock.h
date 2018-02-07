@@ -19,7 +19,7 @@ typedef enum ImGuiDockSlot {
 
 namespace ImGui{
 
-IMGUI_API bool BeginDockspace(const char* dock_panel);
+IMGUI_API bool BeginDockspace();
 IMGUI_API void EndDockspace();
 IMGUI_API void ShutdownDock();
 IMGUI_API void SetNextDock( const char* dock_panel , ImGuiDockSlot slot );
