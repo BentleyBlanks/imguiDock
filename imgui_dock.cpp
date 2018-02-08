@@ -797,18 +797,25 @@ struct DockContext
 		}
 		else if (dock_slot == ImGuiDockSlot_Tab)
 		{
+			bool isLinkListNode = ( dest == &dock );
+
 			Dock* tmp = dest;
-			while (tmp->next_tab)
+			while (!isLinkListNode && tmp->next_tab)
 			{
 				tmp = tmp->next_tab;
+				
+				isLinkListNode = ( tmp == &dock );
 			}
 
-			tmp->next_tab = &dock;
-			dock.prev_tab = tmp;
-			dock.size = tmp->size;
-			dock.pos = tmp->pos;
-			dock.parent = dest->parent;
-			dock.status = Status_Docked;
+			if( !isLinkListNode )
+			{
+				tmp->next_tab = &dock;
+				dock.prev_tab = tmp;
+				dock.size = tmp->size;
+				dock.pos = tmp->pos;
+				dock.parent = dest->parent;
+				dock.status = Status_Docked;
+			}
 		}
 		else if (dock_slot == ImGuiDockSlot_None)
 		{
