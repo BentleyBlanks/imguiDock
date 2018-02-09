@@ -797,17 +797,34 @@ struct DockContext
 		}
 		else if (dock_slot == ImGuiDockSlot_Tab)
 		{
-			bool isLinkListNode = ( dest == &dock );
-
 			Dock* tmp = dest;
-			while (!isLinkListNode && tmp->next_tab)
-			{
-				tmp = tmp->next_tab;
-				
-				isLinkListNode = ( tmp == &dock );
-			}
+			while( tmp->next_tab )	tmp = tmp->next_tab;
 
-			if( !isLinkListNode )
+			auto inLinkList = []( const Dock* linkList , const Dock* checkNode )
+			{
+				bool isLinkNode = ( linkList == checkNode );
+
+				const Dock* temp = linkList;
+				while( !isLinkNode  && temp->prev_tab )
+				{
+					temp = temp->prev_tab;
+
+					isLinkNode = ( temp == checkNode );
+				}
+
+				temp = linkList;
+
+				while( !isLinkNode && temp->next_tab )
+				{
+					temp = temp->next_tab;
+
+					isLinkNode = ( temp == checkNode );
+				}
+
+				return isLinkNode;
+			};
+
+			if( !inLinkList( dest , &dock ) )
 			{
 				tmp->next_tab = &dock;
 				dock.prev_tab = tmp;
