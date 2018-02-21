@@ -1322,7 +1322,7 @@ bool ImGui::BeginDockspace()
 	
 	ImGuiWindowFlags flags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
 	char child_name[1024];
-	sprintf( child_name , "##%s" , cur_dock_panel );
+	snprintf( child_name , sizeof(child_name), "##%s" , cur_dock_panel );
 	bool result = BeginChild( child_name , ImVec2( 0 , 0 ) , false , flags );
 
 	DockContext& dock = g_docklist[cur_dock_panel];
@@ -1350,7 +1350,7 @@ bool ImGui::BeginDock(const char* label, bool* opened, ImGuiWindowFlags extra_fl
 		DockContext& context = g_docklist[cur_dock_panel];
 
 		char new_label[128];
-		sprintf_s( new_label , "%s##%s" , label , cur_dock_panel );
+		snprintf( new_label , sizeof(new_label), "%s##%s" , label , cur_dock_panel );
 
 		return context.begin( new_label , opened , extra_flags );
 	}
