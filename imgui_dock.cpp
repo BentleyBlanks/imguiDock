@@ -3,6 +3,7 @@
 
 #define IMGUI_DEFINE_PLACEMENT_NEW
 #define IMGUI_DEFINE_MATH_OPERATORS
+#define _CRT_SECURE_NO_WARNINGS
 
 #include "imgui.h"
 #include "imgui_internal.h"
