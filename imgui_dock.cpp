@@ -1,9 +1,10 @@
 // based on https://github.com/nem0/LumixEngine/blob/master/external/imgui/imgui_dock.inl
 // modified from https://bitbucket.org/duangle/liminal/src/tip/src/liminal/imgui_dock.cpp
 
-#include "imgui.h"
 #define IMGUI_DEFINE_PLACEMENT_NEW
 #define IMGUI_DEFINE_MATH_OPERATORS
+
+#include "imgui.h"
 #include "imgui_internal.h"
 #include "imgui_dock.h"
 
@@ -220,7 +221,7 @@ struct DockContext
 
 	Dock& getDock(const char* label, bool opened)
 	{
-		ImU32 id = ImHash(label, 0);
+		ImU32 id = ImHashStr(label, 0);
 		for (int i = 0; i < m_docks.size(); ++i)
 		{
 			if (m_docks[i]->id == id) return *m_docks[i];
@@ -494,12 +495,11 @@ struct DockContext
 		Dock* dest_dock = getDockAt();
 
 		Begin("##Overlay",
-			NULL,
-			ImVec2(0, 0),
-			0.f,
+		(bool*)1,
 			ImGuiWindowFlags_Tooltip | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove |
 				ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings |
 				ImGuiWindowFlags_AlwaysAutoResize);
+
 		ImDrawList* canvas = GetWindowDrawList();
 
 		canvas->PushClipRectFullScreen();
@@ -698,7 +698,7 @@ struct DockContext
                     m_next_parent = dock_tab;
 				}
 
-				if (IsItemActive() && IsMouseDragging())
+				if (IsItemActive() && IsMouseDragging(ImGuiMouseButton_Left))
 				{
 					m_drag_offset = GetMousePos() - dock_tab->pos;
 					doUndock(*dock_tab);
@@ -721,10 +721,10 @@ struct DockContext
 				tab_base = pos.y;
 				draw_list->PathClear();
 				draw_list->PathLineTo(pos + ImVec2(-15, size.y));
-				draw_list->PathBezierCurveTo(
+				draw_list->PathBezierCubicCurveTo(
 					pos + ImVec2(-10, size.y), pos + ImVec2(-5, 0), pos + ImVec2(0, 0), 10);
 				draw_list->PathLineTo(pos + ImVec2(size.x, 0));
-				draw_list->PathBezierCurveTo(pos + ImVec2(size.x + 5, 0),
+				draw_list->PathBezierCubicCurveTo(pos + ImVec2(size.x + 5, 0),
 					pos + ImVec2(size.x + 10, size.y),
 					pos + ImVec2(size.x + 15, size.y),
 					10);
@@ -989,8 +989,8 @@ struct DockContext
 			SetNextWindowSize(dock.size);
 			bool ret = Begin(label,
 				opened,
-				dock.size,
-				-1.0f,
+				//dock.size,
+				//-1.0f,
 				ImGuiWindowFlags_NoCollapse /*| ImGuiWindowFlags_ShowBorders*/ | extra_flags); // ImGuiWindowFlags_ShowBorders not used in new version of ImGui
 			m_end_action = EndAction_End;
 			dock.pos = GetWindowPos();
@@ -1185,7 +1185,7 @@ static void readLine(ImGuiContext* ctx, ImGuiSettingsHandler* handler, void* ent
         if(sscanf(line_start, "label=%[^\n^\r]", label) == 1)
         {
             userdata->dock->label = ImStrdup(label);
-			userdata->dock->id = ImHash( userdata->dock->label, 0);
+			userdata->dock->id = ImHashStr( userdata->dock->label, 0);
         }
         else if(sscanf(line_start, "x=%d", &x) == 1)
         {
@@ -1386,7 +1386,7 @@ void ImGui::InitDock()
     ImGuiContext& g = *GImGui;
     ImGuiSettingsHandler ini_handler;
     ini_handler.TypeName = "Dock";
-    ini_handler.TypeHash = ImHash("Dock", 0, 0);
+    ini_handler.TypeHash = ImHashStr("Dock", 0);
     ini_handler.ReadOpenFn = readOpen;
     ini_handler.ReadLineFn = readLine;
     ini_handler.WriteAllFn = writeAll;
